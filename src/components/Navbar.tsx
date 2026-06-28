@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Sun, Moon, HelpCircle, Command, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Sun, Moon, HelpCircle, Command, X, Key, Mic, MicOff } from 'lucide-react';
 import { getCompanyData } from '../services/agentEngine';
 
 interface NavbarProps {
@@ -12,6 +12,8 @@ interface NavbarProps {
   onSearch: (ticker: string) => void;
   user: { email: string; name: string } | null;
   onLogout: () => void;
+  apiKey: string;
+  setApiKey: (key: string) => void;
 }
 
 export default function Navbar({
@@ -23,11 +25,39 @@ export default function Navbar({
   toggleTheme,
   onSearch,
   user,
-  onLogout
+  onLogout,
+  apiKey,
+  setApiKey
 }: NavbarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState(apiKey);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNavbarListening, setIsNavbarListening] = useState(false);
+
+  // Voice search for command palette
+  const startNavbarVoice = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const r = new SR();
+    r.lang = 'en-US';
+    r.maxAlternatives = 1;
+    setIsNavbarListening(true);
+    r.onresult = (e: any) => {
+      const t = e.results[0][0].transcript;
+      setSearchQuery(t);
+      setIsNavbarListening(false);
+      setTimeout(() => { if (t.trim()) { handleSuggestionClick(t.trim()); } }, 500);
+    };
+    r.onerror = () => setIsNavbarListening(false);
+    r.onend = () => setIsNavbarListening(false);
+    r.start();
+  }, []);
+
+  useEffect(() => {
+    setTempApiKey(apiKey);
+  }, [apiKey]);
   const [suggestions, setSuggestions] = useState<{ name: string; ticker: string; logo: string }[]>([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -180,6 +210,34 @@ export default function Navbar({
             <HelpCircle size={18} style={{ color: 'var(--text-secondary)' }} />
           </button>
 
+          {/* Gemini API Key Toggle */}
+          <button 
+            className="glass-button" 
+            style={{ 
+              padding: '0.5rem', 
+              borderRadius: '50%', 
+              background: apiKey ? 'rgba(16, 185, 129, 0.1)' : 'transparent', 
+              borderColor: apiKey ? 'rgba(16, 185, 129, 0.4)' : 'transparent',
+              position: 'relative'
+            }}
+            onClick={() => setShowApiKeyModal(true)}
+            title={apiKey ? 'Real AI Mode Active (Gemini)' : 'Set Gemini API Key'}
+          >
+            <Key size={18} style={{ color: apiKey ? '#10b981' : 'var(--text-secondary)' }} />
+            {apiKey && (
+              <span style={{
+                position: 'absolute',
+                top: '2px',
+                right: '2px',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 6px #10b981'
+              }} />
+            )}
+          </button>
+
           {/* Theme Selector Toggle */}
           <button 
             className="glass-button" 
@@ -300,6 +358,26 @@ export default function Navbar({
                   }}
                 />
               </div>
+              {/* Mic button in palette */}
+              <button
+                type="button"
+                onClick={startNavbarVoice}
+                title={isNavbarListening ? 'Listening…' : 'Voice Search'}
+                style={{
+                  background: isNavbarListening ? 'rgba(239,68,68,0.15)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.35rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  animation: isNavbarListening ? 'pulse 1s infinite' : 'none'
+                }}
+              >
+                {isNavbarListening
+                  ? <MicOff size={16} style={{ color: '#ef4444' }} />
+                  : <Mic size={16} style={{ color: 'var(--text-muted)' }} />
+                }
+              </button>
               <button 
                 onClick={() => setShowCommandPalette(false)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -402,6 +480,76 @@ export default function Navbar({
               <div className="flex-between">
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Switch View Panels</span>
                 <span className="mono-font" style={{ background: 'var(--border-medium)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>Alt + [1-4]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gemini API Key Configuration Modal */}
+      {showApiKeyModal && (
+        <div className="command-palette-overlay" onClick={() => setShowApiKeyModal(false)}>
+          <div className="command-palette-box animate-slide-up" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div className="flex-between" style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
+              <div className="flex-center" style={{ gap: '0.5rem' }}>
+                <Key size={18} style={{ color: 'var(--color-primary)' }} />
+                <span style={{ fontWeight: 700, fontFamily: 'var(--font-title)' }}>Real AI Configuration</span>
+              </div>
+              <button 
+                onClick={() => setShowApiKeyModal(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '1.25rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+                Paste your <strong>Gemini API Key</strong> below to unlock real-time multi-agent investment research. Your key is stored locally in your browser memory and never leaves your client.
+              </p>
+              
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Gemini Developer Key</label>
+                <input 
+                  type="password"
+                  placeholder="AIzaSy..."
+                  value={tempApiKey}
+                  onChange={e => setTempApiKey(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.75rem',
+                    borderRadius: '6px',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    border: '1px solid var(--border-medium)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    fontFamily: 'monospace'
+                  }}
+                />
+              </div>
+
+              <div className="flex-center" style={{ gap: '0.5rem', width: '100%' }}>
+                <button 
+                  className="glass-button glass-button-primary"
+                  style={{ flex: 1, padding: '0.6rem 1rem' }}
+                  onClick={() => {
+                    setApiKey(tempApiKey);
+                    setShowApiKeyModal(false);
+                  }}
+                >
+                  Save & Enable
+                </button>
+                <button 
+                  className="glass-button"
+                  style={{ padding: '0.6rem 1rem' }}
+                  onClick={() => {
+                    setTempApiKey('');
+                    setApiKey('');
+                    setShowApiKeyModal(false);
+                  }}
+                >
+                  Clear Key
+                </button>
               </div>
             </div>
           </div>

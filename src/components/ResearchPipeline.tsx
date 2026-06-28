@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Terminal, Check, Loader2 } from 'lucide-react';
+import { generateCompanyAnalysis, generateGeminiAnalysis } from '../services/agentEngine';
+import type { CompanyAnalysis } from '../services/agentEngine';
 
 interface ResearchPipelineProps {
   companyName: string;
-  onComplete: () => void;
+  apiKey: string;
+  onComplete: (data: CompanyAnalysis) => void;
 }
 
-export default function ResearchPipeline({ companyName, onComplete }: ResearchPipelineProps) {
+export default function ResearchPipeline({ companyName, apiKey, onComplete }: ResearchPipelineProps) {
   const steps = [
     'Searching global financial repositories...',
     'Reading annual reports & Form 10-K...',
@@ -24,26 +27,91 @@ export default function ResearchPipeline({ companyName, onComplete }: ResearchPi
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const progressPercent = Math.round(((currentStepIndex + 1) / steps.length) * 100);
+  const hasStartedReal = useRef(false);
 
-  // Cycle through steps
+  // Cycle through steps for MOCK mode or run REAL AI mode
   useEffect(() => {
-    if (currentStepIndex >= steps.length) {
+    if (apiKey) {
+      if (hasStartedReal.current) return;
+      hasStartedReal.current = true;
+      
+      const runReal = async () => {
+        try {
+          const data = await generateGeminiAnalysis(companyName, apiKey, (stepIdx, newLogs) => {
+            setCurrentStepIndex(stepIdx);
+            setConsoleLogs(prev => [...prev, ...newLogs]);
+          });
+          setCurrentStepIndex(steps.length - 1);
+          setConsoleLogs(prev => [
+            ...prev,
+            `[Chairman] Consensus report finalized. Real AI analysis complete.`
+          ]);
+          setTimeout(() => {
+            onComplete(data);
+          }, 1200);
+        } catch (err: any) {
+          console.error("Gemini pipeline failed: ", err);
+          setConsoleLogs(prev => [
+            ...prev,
+            `[Error] Gemini API pipeline failed: ${err.message || err}`,
+            `[Planner] Recovering gracefully... Falling back to high-fidelity simulated calculations.`
+          ]);
+          
+          // Trigger simulated countdown cycle
+          setTimeout(() => {
+            setConsoleLogs(prev => [...prev, `[Planner] Spinning up local simulated engine fallback...`]);
+            let currentMockIdx = 0;
+            const interval = setInterval(() => {
+              if (currentMockIdx >= steps.length) {
+                clearInterval(interval);
+                const mockData = generateCompanyAnalysis(companyName);
+                onComplete(mockData);
+                return;
+              }
+              setCurrentStepIndex(currentMockIdx);
+              const mockNodeLogs: Record<number, string[]> = {
+                0: [`[Planner] Initiated simulated research fallback...`],
+                1: [`[Financial] Financial statement arrays generated.`],
+                2: [`[News] News database models loaded.`],
+                3: [`[News] Sentiment gauges structured.`],
+                4: [`[Risk] Insider threat checks completed.`],
+                5: [`[Competition] Compiling peer multiple comparison tables.`],
+                6: [`[Valuation] WACC models compiled.`],
+                7: [`[Risk] Accounting red flags scan completed.`],
+                8: [`[LangGraph] Committee chat nodes spin up.`],
+                9: [`[Debate] Bull & Bear advocates debate finalized.`],
+                10: [`[Chairman] final vote compiled. Consensus draft prepared.`]
+              };
+              setConsoleLogs(prev => [...prev, ...(mockNodeLogs[currentMockIdx] || [])]);
+              currentMockIdx++;
+            }, 600);
+          }, 1500);
+        }
+      };
+      
+      runReal();
+    } else {
+      // Mock mode timer-based cycle
+      if (currentStepIndex >= steps.length) {
+        const timer = setTimeout(() => {
+          const data = generateCompanyAnalysis(companyName);
+          onComplete(data);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+
+      const duration = currentStepIndex === steps.length - 1 ? 900 : 450 + Math.random() * 200;
       const timer = setTimeout(() => {
-        onComplete();
-      }, 800);
+        setCurrentStepIndex(prev => prev + 1);
+      }, duration);
+
       return () => clearTimeout(timer);
     }
+  }, [currentStepIndex, companyName, apiKey, onComplete, steps.length]);
 
-    const duration = currentStepIndex === steps.length - 1 ? 900 : 450 + Math.random() * 200;
-    const timer = setTimeout(() => {
-      setCurrentStepIndex(prev => prev + 1);
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [currentStepIndex, onComplete, steps.length]);
-
-  // Generate logs matching current research steps
+  // Generate logs matching current research steps (MOCK mode only)
   useEffect(() => {
+    if (apiKey) return; // real mode appends its own logs dynamically
     if (currentStepIndex >= steps.length) return;
     
     const nodeLogs: Record<number, string[]> = {
@@ -99,7 +167,7 @@ export default function ResearchPipeline({ companyName, onComplete }: ResearchPi
 
     const newLogs = nodeLogs[currentStepIndex] || [];
     setConsoleLogs(prev => [...prev, ...newLogs]);
-  }, [currentStepIndex, companyName]);
+  }, [currentStepIndex, companyName, apiKey]);
 
   // Auto-scroll logs container
   useEffect(() => {

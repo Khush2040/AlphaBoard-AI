@@ -12,7 +12,6 @@ import AuthPage from './components/AuthPage';
 import PromptLibrary from './components/PromptLibrary';
 import BuildJourney from './components/BuildJourney';
 import { 
-  generateCompanyAnalysis, 
   getSavedWatchlist, toggleWatchlist 
 } from './services/agentEngine';
 import type { CompanyAnalysis, WatchlistItem } from './services/agentEngine';
@@ -24,6 +23,9 @@ export default function App() {
   
   // Auth state
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+
+  // Gemini API key state (stored in session memory only)
+  const [apiKey, setApiKey] = useState<string>('');
 
   // Research state
   const [isResearching, setIsResearching] = useState(false);
@@ -78,9 +80,8 @@ export default function App() {
     setCurrentTab('landing'); // Render pipeline loading overlay
   };
 
-  const handleResearchComplete = () => {
+  const handleResearchComplete = (data: CompanyAnalysis) => {
     setIsResearching(false);
-    const data = generateCompanyAnalysis(searchedCompany);
     setAnalysisData(data);
     
     // Add to history
@@ -103,7 +104,8 @@ export default function App() {
     if (isResearching) {
       return (
         <ResearchPipeline 
-          companyName={searchedCompany} 
+          companyName={searchedCompany}
+          apiKey={apiKey}
           onComplete={handleResearchComplete} 
         />
       );
@@ -333,6 +335,8 @@ export default function App() {
         onSearch={handleSearch}
         user={user}
         onLogout={handleLogout}
+        apiKey={apiKey}
+        setApiKey={setApiKey}
       />
       
       {/* Main routing tab container */}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, TrendingUp, Cpu, BarChart3, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, TrendingUp, Cpu, BarChart3, FileText, Mic, MicOff } from 'lucide-react';
 import { getCompanyData } from '../services/agentEngine';
 
 interface LandingPageProps {
@@ -12,6 +12,45 @@ export default function LandingPage({ onSearch, recentSearches }: LandingPagePro
   const [suggestions, setSuggestions] = useState<{ name: string; ticker: string; logo: string }[]>([]);
   const [typingText, setTypingText] = useState('investment advice.');
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; size: number; delay: number }[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+
+  // Voice search using Web Speech API
+  const startVoiceSearch = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceError('Voice search not supported in this browser.');
+      setTimeout(() => setVoiceError(''), 3000);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setIsListening(true);
+    setVoiceError('');
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+      setIsListening(false);
+      // Auto-submit after a short delay
+      setTimeout(() => {
+        if (transcript.trim()) onSearch(transcript.trim());
+      }, 600);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      setVoiceError('Could not understand. Please try again.');
+      setTimeout(() => setVoiceError(''), 3000);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  }, [onSearch]);
 
   // Typing effect loop
   useEffect(() => {
@@ -186,6 +225,31 @@ export default function LandingPage({ onSearch, recentSearches }: LandingPagePro
                 fontFamily: 'var(--font-sans)'
               }}
             />
+
+            {/* Voice Search Mic Button */}
+            <button
+              type="button"
+              onClick={startVoiceSearch}
+              title={isListening ? 'Listening…' : 'Voice Search'}
+              style={{
+                background: isListening ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                border: isListening ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid transparent',
+                borderRadius: '8px',
+                padding: '0.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                animation: isListening ? 'pulse 1s infinite' : 'none'
+              }}
+            >
+              {isListening
+                ? <MicOff size={20} style={{ color: '#ef4444' }} />
+                : <Mic size={20} style={{ color: 'var(--text-muted)' }} />
+              }
+            </button>
+
             <button 
               type="submit" 
               className="glass-button glass-button-primary"
@@ -194,6 +258,46 @@ export default function LandingPage({ onSearch, recentSearches }: LandingPagePro
               Analyze
             </button>
           </div>
+
+          {/* Voice Feedback Banner */}
+          {isListening && (
+            <div style={{
+              position: 'absolute',
+              top: '110%',
+              left: 0,
+              right: 0,
+              marginTop: '0.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '10px',
+              padding: '0.65rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              zIndex: 200
+            }}>
+              <span style={{ fontSize: '1.2rem', animation: 'pulse 1s infinite' }}>🎤</span>
+              <span style={{ fontSize: '0.9rem', color: '#fca5a5', fontWeight: 500 }}>Listening… say a company name like "Apple" or "NVIDIA"</span>
+            </div>
+          )}
+          {voiceError && (
+            <div style={{
+              position: 'absolute',
+              top: '110%',
+              left: 0,
+              right: 0,
+              marginTop: '0.5rem',
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '10px',
+              padding: '0.65rem 1rem',
+              fontSize: '0.88rem',
+              color: '#fbbf24',
+              zIndex: 200
+            }}>
+              ⚠️ {voiceError}
+            </div>
+          )}
 
           {/* Autocomplete Recommendation Dropdown */}
           {suggestions.length > 0 && (

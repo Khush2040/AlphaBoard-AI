@@ -1,32 +1,29 @@
-# React + TypeScript + Vite
+# AlphaBoard AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+"Don't Ask One AI. Ask an Entire Investment Committee."
 
-Currently, two official plugins are available:
+AlphaBoard AI is a production-grade, client-side investment research terminal mimicking a 13-agent LangGraph workflow. It generates institutional-grade investment consensus reports, WACC/DCF intrinsic valuations, SWOT matrices, and competitive audits directly in the browser.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Getting Started
 
-## React Compiler
+### Prerequisites
+*   Node.js (v18+)
+*   npm
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Installation
+1.  Clone or unzip the project folder.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Launch the local development server:
+    ```bash
+    npm run dev
+    ```
+4.  Open your browser to: **http://localhost:5173/**
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Key Features
+*   **13-Agent Neural Committee:** Coordinated DAG workflow modeling expert perspectives.
+*   **Explainability Panel:** Collapsible audit panel detailing voter weights, citations, SWOT signals, and red flags.
+*   **What-If Simulator:** Interactive sliders adjusting cash flows and WACC metrics.
+*   **Sleek terminal UI:** Dark mode glassmorphic styling, custom interactive SVG charts, and a print stylesheet.
